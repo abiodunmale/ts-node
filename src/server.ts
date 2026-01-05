@@ -28,8 +28,8 @@ app.use(
   })
 );
 
-app.use('/api/todos', todoRoutes);
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/v1/todos', todoRoutes);
+app.use('/api/v1/auth', authLimiter, authRoutes);
 app.get('/', (req: Request, res: Response) => {
     res.send('Todo API with TypeScript is running!');
 });
