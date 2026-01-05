@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import User, { IUser } from '../models/User';
 import jwt from 'jsonwebtoken';
+import { RegisterInput, LoginInput } from '../validation/schemas';
 
 // Request body interfaces (Interface Segregation - SOLID)
 interface RegisterBody {
@@ -19,7 +20,7 @@ const generateToken = (userId: string): string => {
   });
 };
 
-export const register = async (req: Request<{}, {}, RegisterBody>, res: Response): Promise<void> => {
+export const register = async (req: Request<{}, {}, RegisterInput>, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
   try {
@@ -46,7 +47,7 @@ export const register = async (req: Request<{}, {}, RegisterBody>, res: Response
   }
 };
 
-export const login = async (req: Request<{}, {}, LoginBody>, res: Response): Promise<void> => {
+export const login = async (req: Request<{}, {}, LoginInput>, res: Response): Promise<void> => {
   const { email, password } = req.body;
 
   try {

@@ -4,6 +4,9 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import todoRoutes from './routes/todos';
 import authRoutes from './routes/auth';
+import { errorHandler } from './middleware/errorHandler';
+import pinoHttp from 'pino-http';
+import logger from './utils/logger';
 
 dotenv.config();
 
@@ -11,12 +14,24 @@ const app: Express = express();
 
 app.use(cors());
 app.use(express.json());
+
+app.use(
+  pinoHttp({
+    logger,
+    customLogLevel: (req, res, err) => {
+      if (res.statusCode >= 400) return 'warn';
+      if (res.statusCode >= 500 || err) return 'error';
+      return 'info';
+    },
+  })
+);
+
 app.use('/api/todos', todoRoutes);
 app.use('/api/auth', authRoutes);
-
 app.get('/', (req: Request, res: Response) => {
     res.send('Todo API with TypeScript is running!');
 });
+app.use(errorHandler);
 
 
 const PORT: number = Number(process.env.PORT) || 5000;

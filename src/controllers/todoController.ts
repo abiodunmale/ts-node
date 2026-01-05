@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import Todo, { ITodo } from '../models/Todo';
+import { CreateTodoInput, UpdateTodoInput } from '../validation/schemas';
+
 
 interface CreateTodoBody {
     title: string;
@@ -20,7 +22,7 @@ export const getTodos = async (req: Request, res: Response) : Promise<void> => {
 };
 
 
-export const createTodo = async (req: Request<{}, {}, CreateTodoBody>, res: Response) : Promise<void> => {
+export const createTodo = async (req: Request<{}, {}, CreateTodoInput>, res: Response) : Promise<void> => {
     const { title } = req.body;
 
     if (!title) {
@@ -40,7 +42,7 @@ export const createTodo = async (req: Request<{}, {}, CreateTodoBody>, res: Resp
     }
 }
 
-export const updateTodo = async (req: Request<{id: string}, {} , UpdateTodoBody>, res: Response) : Promise<void> => {
+export const updateTodo = async (req: Request<{id: string}, {} , UpdateTodoInput>, res: Response) : Promise<void> => {
     const { id } = req.params;
     const updates = req.body;
 
@@ -69,7 +71,7 @@ export const deleteTodo = async (req: Request<{id: string}>, res: Response) : Pr
             _id: id,
             user: req.user!.id,
         });
-        
+
         if (!deletedTodo) {
             res.status(404).json({ message: 'Todo not found' });
             return;
