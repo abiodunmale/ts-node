@@ -16,6 +16,18 @@ interface UpdateTodoBody {
 export const getTodos = async (req: Request, res: Response) : Promise<void> => {
     const cacheKey = `todos:user:${req.user!.id}`;
 
+    let searchQuery: any = { user: req.user!.id };
+
+    if (req.query.search) {
+        searchQuery.title = { $regex: new RegExp(req.query.search as string, 'i') }; // Case-insensitive
+    }
+
+    if (req.query.completed !== undefined) {
+        searchQuery.completed = req.query.completed === 'true';
+    }
+
+    console.log(searchQuery)
+
     let page = Number(req.query.page) || 1; // Default page 1
     let limit = Number(req.query.limit) || 10; // Default 10 items per page
 
@@ -25,7 +37,7 @@ export const getTodos = async (req: Request, res: Response) : Promise<void> => {
     const skip = (page - 1) * limit; // Calculate how many to skip (e.g., page 2 skips first 10)
 
     try {
-        const paginatedCacheKey = `${cacheKey}:page:${page}:limit:${limit}`;
+        const paginatedCacheKey = `${cacheKey}:page:${page}:limit:${limit}:search:${req.query.search}:completed:${req.query.completed}`;
         const cachedData = await redisClient.get(paginatedCacheKey);
 
         if (cachedData) {
@@ -34,10 +46,10 @@ export const getTodos = async (req: Request, res: Response) : Promise<void> => {
             return;
         }
 
-        const todosQuery = Todo.find({ user: req.user!.id }).sort({ createdAt: -1 });
+        const todosQuery = Todo.find(searchQuery).sort({ createdAt: -1 });
         const todos = await todosQuery.skip(skip).limit(limit).exec(); // Apply skip/limit
 
-        const totalTodos = await Todo.countDocuments({ user: req.user!.id });
+        const totalTodos = await Todo.countDocuments(searchQuery);
         const totalPages = Math.ceil(totalTodos / limit);
 
         const response = {
