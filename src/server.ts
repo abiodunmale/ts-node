@@ -7,6 +7,7 @@ import authRoutes from './routes/auth';
 import { errorHandler } from './middleware/errorHandler';
 import pinoHttp from 'pino-http';
 import logger from './utils/logger';
+import { apiLimiter, authLimiter } from './middleware/rateLimit';
 
 dotenv.config();
 
@@ -14,6 +15,7 @@ const app: Express = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(apiLimiter);
 
 app.use(
   pinoHttp({
@@ -27,7 +29,7 @@ app.use(
 );
 
 app.use('/api/todos', todoRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.get('/', (req: Request, res: Response) => {
     res.send('Todo API with TypeScript is running!');
 });

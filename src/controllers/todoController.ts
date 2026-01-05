@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import Todo, { ITodo } from '../models/Todo';
 import { CreateTodoInput, UpdateTodoInput } from '../validation/schemas';
-
+import redisClient from '../utils/redis';
+import logger from '../utils/logger';
 
 interface CreateTodoBody {
     title: string;
@@ -13,8 +14,20 @@ interface UpdateTodoBody {
 }
 
 export const getTodos = async (req: Request, res: Response) : Promise<void> => {
+    const cacheKey = `todos:user:${req.user!.id}`;
+
     try {
-        const todos : ITodo[] = await Todo.find({ user: req.user!.id });
+        const cached = await redisClient.get(cacheKey);
+        if (cached) {
+            logger.debug(`Cache hit for ${cacheKey}`);
+            res.status(200).json(JSON.parse(cached));
+            return;
+        }
+
+        const todos : ITodo[] = await Todo.find({ user: req.user!.id }).sort({ createdAt: -1 });
+        await redisClient.setEx(cacheKey, 300, JSON.stringify(todos));
+        logger.debug('Cached data for 5 minutes');
+
         res.status(200).json(todos);
     } catch (error) {
         res.status(500).json({ message: (error as Error).message });
@@ -35,7 +48,12 @@ export const createTodo = async (req: Request<{}, {}, CreateTodoInput>, res: Res
             title,
             user: req.user!.id, // Attach owner
         });
-        await newTodo.save(); 
+        await newTodo.save();
+
+        const cacheKey = `todos:user:${req.user!.id}`;
+        await redisClient.del(cacheKey);
+        logger.debug('Cache invalidated – will refresh on next request');
+         
         res.status(201).json(newTodo);
     } catch (error) {
         res.status(400).json({ message: (error as Error).message });
@@ -57,6 +75,11 @@ export const updateTodo = async (req: Request<{id: string}, {} , UpdateTodoInput
             res.status(404).json({ message: 'Todo not found' });
             return;
         }
+
+        const cacheKey = `todos:user:${req.user!.id}`;
+        await redisClient.del(cacheKey);
+        logger.debug('Cache invalidated – will refresh on next request');
+
         res.status(200).json(updatedTodo);
     } catch (error) {
         res.status(400).json({ message: (error as Error).message });
@@ -76,6 +99,11 @@ export const deleteTodo = async (req: Request<{id: string}>, res: Response) : Pr
             res.status(404).json({ message: 'Todo not found' });
             return;
         }
+
+        const cacheKey = `todos:user:${req.user!.id}`;
+        await redisClient.del(cacheKey);
+        logger.debug('Cache invalidated – will refresh on next request');
+
         res.status(204).send();  // No content
     } catch (error) {
         res.status(500).json({ message: (error as Error).message });
