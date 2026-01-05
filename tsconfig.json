@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",                  // Compile to modern JS
+    "module": "Node16",                  // Node's modern module resolution
+    "moduleResolution": "Node16",
+    "esModuleInterop": true,             // Smooth JS/TS interop
+    "strict": true,                      // Enable all strict type checks (highly recommended!)
+    "skipLibCheck": true,                // Faster builds
+    "outDir": "./dist",                  // Compiled JS goes here
+    "rootDir": "./src",                  // Source TS files here
+    "typeRoots": ["./src/@types", "./node_modules/@types"]
+  },
+  "include": ["src/**/*", "./src/@types"],
+  "exclude": ["node_modules"]
+}
