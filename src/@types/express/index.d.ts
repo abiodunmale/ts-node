@@ -7,6 +7,10 @@ declare global {
       user?: {
         id: string;
       };
+      query: {
+        page?: string;
+        limit?: string;
+      };
     }
   }
 }

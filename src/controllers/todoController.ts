@@ -16,19 +16,44 @@ interface UpdateTodoBody {
 export const getTodos = async (req: Request, res: Response) : Promise<void> => {
     const cacheKey = `todos:user:${req.user!.id}`;
 
+    let page = Number(req.query.page) || 1; // Default page 1
+    let limit = Number(req.query.limit) || 10; // Default 10 items per page
+
+    if (page < 1) page = 1;
+    if (limit < 1 || limit > 100) limit = 10; // Max 100 to prevent abuse
+
+    const skip = (page - 1) * limit; // Calculate how many to skip (e.g., page 2 skips first 10)
+
     try {
-        const cached = await redisClient.get(cacheKey);
-        if (cached) {
-            logger.debug(`Cache hit for ${cacheKey}`);
-            res.status(200).json(JSON.parse(cached));
+        const paginatedCacheKey = `${cacheKey}:page:${page}:limit:${limit}`;
+        const cachedData = await redisClient.get(paginatedCacheKey);
+
+        if (cachedData) {
+            logger.debug(`Cache HIT for ${paginatedCacheKey}`);
+            res.status(200).json(JSON.parse(cachedData));
             return;
         }
 
-        const todos : ITodo[] = await Todo.find({ user: req.user!.id }).sort({ createdAt: -1 });
-        await redisClient.setEx(cacheKey, 300, JSON.stringify(todos));
-        logger.debug('Cached data for 5 minutes');
+        const todosQuery = Todo.find({ user: req.user!.id }).sort({ createdAt: -1 });
+        const todos = await todosQuery.skip(skip).limit(limit).exec(); // Apply skip/limit
 
-        res.status(200).json(todos);
+        const totalTodos = await Todo.countDocuments({ user: req.user!.id });
+        const totalPages = Math.ceil(totalTodos / limit);
+
+        const response = {
+            todos,
+            pagination: {
+                currentPage: page,
+                totalPages,
+                totalItems: totalTodos,
+                itemsPerPage: limit,
+            },
+        };
+
+        res.status(200).json(response);
+
+        // Cache the full response
+        await redisClient.setEx(paginatedCacheKey, 300, JSON.stringify(response));
     } catch (error) {
         res.status(500).json({ message: (error as Error).message });
     }
